@@ -28,7 +28,7 @@ function cellValue(column, row) {
   return String(value);
 }
 
-function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empty }) {
+function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empty, filename }) {
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -36,6 +36,7 @@ function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empt
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -83,6 +84,30 @@ function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empt
     setQuery(draft.trim());
   }
 
+  async function descargar() {
+    setDownloading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ q: query, format: "xlsx" });
+      const response = await fetch(`${endpoint}?${params}`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo descargar el Excel");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo descargar el Excel");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <section className={styles.card}>
       <div className={styles.head}>
@@ -103,6 +128,14 @@ function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empt
           onChange={(event) => setDraft(event.target.value)}
         />
         <button type="submit">BUSCAR</button>
+        <button
+          type="button"
+          className={styles.excel}
+          onClick={descargar}
+          disabled={downloading}
+        >
+          {downloading ? "Descargando..." : "Descargar Excel"}
+        </button>
       </form>
 
       {error ? <p className={styles.message}>{error}</p> : null}
@@ -206,6 +239,7 @@ export default function Reporte() {
         title="Rojos"
         hint="Capturas guardadas con serial obsoleto."
         endpoint="/api/reporte/rojos"
+        filename="rojos.xlsx"
         columns={ROJOS}
         rowKey="captura_id"
         placeholder="Buscar por serial, material, rack, empleado, ubicación..."
@@ -215,6 +249,7 @@ export default function Reporte() {
         title="Faltan de capturar"
         hint="Seriales que están en material y todavía no aparecen en captura."
         endpoint="/api/reporte/faltantes"
+        filename="faltan-de-capturar.xlsx"
         columns={FALTANTES}
         rowKey="material_id"
         placeholder="Buscar por serial, material, descripción o ubicación..."

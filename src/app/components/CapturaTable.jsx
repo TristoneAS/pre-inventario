@@ -51,6 +51,7 @@ export default function CapturaTable() {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -98,6 +99,30 @@ export default function CapturaTable() {
     setQuery(draft.trim());
   }
 
+  async function descargar() {
+    setDownloading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ q: query, format: "xlsx" });
+      const response = await fetch(`/api/captura?${params}`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo descargar el Excel");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "consulta-capturas.xlsx";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo descargar el Excel");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <section className={styles.card}>
       <div className={styles.head}>
@@ -121,6 +146,14 @@ export default function CapturaTable() {
           onChange={(event) => setDraft(event.target.value)}
         />
         <button type="submit">BUSCAR</button>
+        <button
+          type="button"
+          className={styles.excel}
+          onClick={descargar}
+          disabled={downloading}
+        >
+          {downloading ? "Descargando..." : "Descargar Excel"}
+        </button>
       </form>
 
       {error ? <p className={styles.message}>{error}</p> : null}

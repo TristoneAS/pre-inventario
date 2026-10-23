@@ -1,6 +1,17 @@
 import { connection } from "next/server";
 import { requireAdmin } from "../../../libs/adminSession";
+import { excelResponse } from "../../../libs/excel";
 import { inventario } from "../../../libs/inventario";
+
+const FALTANTES_COLUMNS = [
+  { key: "storage_unit", label: "Serial" },
+  { key: "material", label: "Material" },
+  { key: "material_description", label: "Descripción" },
+  { key: "stock", label: "Cantidad" },
+  { key: "storage_location", label: "Ubicación" },
+  { key: "unidad_medida", label: "Unidad" },
+  { key: "special_stock", label: "Stock especial" },
+];
 
 const PAGE_SIZES = new Set([10, 30, 50, 100]);
 
@@ -39,8 +50,22 @@ export async function GET(request) {
   }
 
   const where = `WHERE ${filters.join(" AND ")}`;
+  const select = `SELECT m.material_id, m.storage_unit, m.material, m.material_description,
+              m.stock, m.storage_location, m.unidad_medida, m.special_stock
+       FROM material m ${where}
+       ORDER BY m.storage_unit, m.material_id`;
 
   try {
+    if (searchParams.get("format") === "xlsx") {
+      const [rows] = await inventario.query(select, params);
+      return excelResponse({
+        filename: "faltan-de-capturar.xlsx",
+        sheetName: "Faltan de capturar",
+        columns: FALTANTES_COLUMNS,
+        rows,
+      });
+    }
+
     const [countRows] = await inventario.query(
       `SELECT COUNT(*) AS total FROM material m ${where}`,
       params,
@@ -51,11 +76,7 @@ export async function GET(request) {
     const offset = (page - 1) * pageSize;
 
     const [rows] = await inventario.query(
-      `SELECT m.material_id, m.storage_unit, m.material, m.material_description,
-              m.stock, m.storage_location, m.unidad_medida, m.special_stock
-       FROM material m ${where}
-       ORDER BY m.storage_unit, m.material_id
-       LIMIT ${pageSize} OFFSET ${offset}`,
+      `${select} LIMIT ${pageSize} OFFSET ${offset}`,
       params,
     );
 

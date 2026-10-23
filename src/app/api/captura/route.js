@@ -1,7 +1,22 @@
 import { connection } from "next/server";
 import { requireAdmin } from "../../libs/adminSession";
 import { empleados } from "../../libs/empleados";
+import { excelResponse } from "../../libs/excel";
 import { inventario } from "../../libs/inventario";
+
+const CAPTURA_COLUMNS = [
+  { key: "captura_id", label: "ID" },
+  { key: "serial", label: "Serial" },
+  { key: "material", label: "Material" },
+  { key: "material_description", label: "Descripción" },
+  { key: "cantidad", label: "Cantidad" },
+  { key: "ubicacion", label: "Ubicación" },
+  { key: "rack", label: "Rack" },
+  { key: "planta", label: "Planta" },
+  { key: "emp_nombre", label: "Empleado" },
+  { key: "fecha", label: "Fecha" },
+  { key: "auditado", label: "Auditado" },
+];
 
 const PAGE_SIZES = new Set([10, 30, 50, 100]);
 
@@ -46,8 +61,22 @@ export async function GET(request) {
   }
 
   const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+  const select = `SELECT captura_id, serial, material, material_description, cantidad,
+              ubicacion, rack, planta, emp_nombre, fecha, serial_auditado
+       FROM captura ${where}
+       ORDER BY captura_id DESC`;
 
   try {
+    if (searchParams.get("format") === "xlsx") {
+      const [rows] = await inventario.query(select, filterParams);
+      return excelResponse({
+        filename: "consulta-capturas.xlsx",
+        sheetName: "Consulta capturas",
+        columns: CAPTURA_COLUMNS,
+        rows,
+      });
+    }
+
     const [countRows] = await inventario.query(
       `SELECT COUNT(*) AS total FROM captura ${where}`,
       filterParams,
@@ -58,11 +87,7 @@ export async function GET(request) {
     const offset = (page - 1) * pageSize;
 
     const [rows] = await inventario.query(
-      `SELECT captura_id, serial, material, material_description, cantidad,
-              ubicacion, rack, planta, emp_nombre, fecha, serial_auditado
-       FROM captura ${where}
-       ORDER BY captura_id DESC
-       LIMIT ${pageSize} OFFSET ${offset}`,
+      `${select} LIMIT ${pageSize} OFFSET ${offset}`,
       filterParams,
     );
 
