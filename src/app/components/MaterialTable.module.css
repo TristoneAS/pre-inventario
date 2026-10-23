@@ -1,0 +1,220 @@
+.card {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e6eaf0;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  color: #243041;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px 8px;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.titleRow h2 {
+  margin: 0;
+  min-width: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1d4ed8;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #e8f1ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hint {
+  margin: 0;
+  color: #6b7785;
+  font-size: 13px;
+}
+
+.searchRow {
+  display: flex;
+  gap: 8px;
+  padding: 8px 20px 16px;
+}
+
+.searchRow input {
+  flex: 1;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #d5dbe3;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 14px;
+  color: #243041;
+  background: #fff;
+}
+
+.searchRow input:focus {
+  outline: 2px solid #bfdbfe;
+  border-color: #60a5fa;
+}
+
+.searchRow button {
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 4px;
+  background: #1d4ed8;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.searchRow button:hover {
+  background: #1e40af;
+}
+
+.wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+  font-size: 13px;
+}
+
+.table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: #526070;
+  background: #fff;
+  border-top: 1px solid #e6eaf0;
+  border-bottom: 1px solid #e6eaf0;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #eef1f5;
+  color: #2c3a4a;
+  white-space: nowrap;
+}
+
+.table tbody tr:nth-child(even) {
+  background: #f7f9fb;
+}
+
+.table tbody tr:hover {
+  background: #eef5ff;
+}
+
+.empty,
+.message {
+  padding: 28px 20px;
+  color: #6b7785;
+  font-size: 14px;
+}
+
+.message {
+  color: #b42318;
+}
+
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  color: #526070;
+  font-size: 13px;
+}
+
+.pager label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pager select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #d5dbe3;
+  border-radius: 4px;
+  background: #fff;
+  color: #243041;
+  font: inherit;
+}
+
+.pages {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pages button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d5dbe3;
+  border-radius: 4px;
+  background: #fff;
+  color: #243041;
+  cursor: pointer;
+}
+
+.pages button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (max-width: 700px) {
+  .head,
+  .searchRow,
+  .pager,
+  .empty,
+  .message {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .searchRow,
+  .pager {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchRow input,
+  .searchRow button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pager {
+    align-items: flex-start;
+  }
+
+  .pager label,
+  .pages {
+    flex-wrap: wrap;
+  }
+}
+
