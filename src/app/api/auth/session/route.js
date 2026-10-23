@@ -21,9 +21,9 @@ export async function GET() {
   });
 }
 
-export async function DELETE() {
+export async function DELETE(request) {
   await connection();
   const response = NextResponse.json({ ok: true });
-  clearAdminCookie(response);
+  clearAdminCookie(response, request);
   return response;
 }

@@ -54,7 +54,7 @@ export async function POST(request) {
         isAdmin: false,
       },
     });
-    clearAdminCookie(result);
+    clearAdminCookie(result, request);
     return result;
   } catch (error) {
     console.error(error);

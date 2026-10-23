@@ -37,7 +37,27 @@ function verify(token) {
   }
 }
 
-export function attachAdminCookie(response, user) {
+function cookieSecure(request) {
+  const forwarded = request?.headers?.get("x-forwarded-proto");
+  if (forwarded) return forwarded.split(",")[0].trim() === "https";
+  try {
+    return new URL(request.url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function cookieOptions(request, maxAge) {
+  return {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge,
+    secure: cookieSecure(request),
+  };
+}
+
+export function attachAdminCookie(response, user, request) {
   response.cookies.set(
     ADMIN_COOKIE,
     sign({
@@ -47,23 +67,12 @@ export function attachAdminCookie(response, user) {
       emp_nombre: user.emp_nombre ?? "",
       exp: Date.now() + MAX_AGE * 1000,
     }),
-    {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: MAX_AGE,
-      secure: process.env.NODE_ENV === "production",
-    },
+    cookieOptions(request, MAX_AGE),
   );
 }
 
-export function clearAdminCookie(response) {
-  response.cookies.set(ADMIN_COOKIE, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+export function clearAdminCookie(response, request) {
+  response.cookies.set(ADMIN_COOKIE, "", cookieOptions(request, 0));
 }
 
 export async function readAdminSession() {

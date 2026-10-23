@@ -125,7 +125,7 @@ export async function POST(request) {
       username,
       emp_id: sessionUser.emp_id,
       emp_nombre: displayName,
-    });
+    }, request);
     return result;
   } catch (error) {
     console.error(error);
