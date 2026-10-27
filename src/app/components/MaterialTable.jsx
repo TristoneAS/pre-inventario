@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 import styles from "./MaterialTable.module.css";
 
 const COLUMNS = [
-  { key: "material_id", label: "ID" },
-  { key: "material", label: "Material" },
-  { key: "material_description", label: "Descripción" },
-  { key: "stock", label: "Stock" },
-  { key: "unidad_medida", label: "Unidad" },
-  { key: "storage_location", label: "Ubicación" },
-  { key: "storage_unit", label: "Unidad de almacén" },
-  { key: "special_stock", label: "Stock especial" },
-];
+  "material_id",
+  "material",
+  "material_description",
+  "stock",
+  "unidad_medida",
+  "storage_location",
+  "storage_unit",
+  "special_stock",
+].map((key) => ({ key, label: key.replaceAll("_", " ") }));
 
 function cellValue(value) {
   if (value === null || value === undefined || value === "") return "";

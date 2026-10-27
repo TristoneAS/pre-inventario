@@ -51,16 +51,9 @@ export default function Login({ onSuccess }) {
       <form className={styles.card} onSubmit={submit}>
         <div className={styles.stripe} />
         <div className={styles.body}>
-          <div className={styles.logo} aria-hidden="true">
-            <svg viewBox="0 0 140 78" className={styles.mountains}>
-              <polygon points="6,74 46,22 68,74" fill="#f0b429" />
-              <polygon points="38,74 70,4 104,74" fill="#1d6fbf" />
-              <polygon points="78,74 108,26 134,74" fill="#d7dbe0" />
-              <polygon points="52,74 70,28 86,74" fill="#2f86d6" opacity="0.55" />
-            </svg>
-            <span>TRISTONE</span>
+          <div className={styles.logo}>
+            <img src="/tristone.png" alt="Tristone" />
           </div>
-
           <h1>Inventario Físico</h1>
           <p className={styles.hint}>
             {comoAdmin

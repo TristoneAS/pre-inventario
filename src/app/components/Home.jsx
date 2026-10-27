@@ -15,6 +15,28 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const NAV_ICONS = {
+  inicio:
+    "M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z",
+  capturar:
+    "M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z",
+  auditar:
+    "M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z",
+  consulta:
+    "M3 5v14h18V5H3zm4 2v2H5V7h2zm-2 6v-2h2v2H5zm0 2h2v2H5v-2zm14 2H9v-2h10v2zm0-4H9v-2h10v2zm0-4H9V7h10v2z",
+  cargar: "M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5z",
+  reporte:
+    "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z",
+};
+
+function NavIcon({ name }) {
+  return (
+    <svg viewBox="0 0 24 24">
+      <path fill="currentColor" d={NAV_ICONS[name]} />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [mb52Loading, setMb52Loading] = useState(false);
   const [zlx03Loading, setZlx03Loading] = useState(false);
@@ -228,12 +250,12 @@ export default function Home() {
   }
 
   const menu = [
-    { id: "inicio", label: "Menu", icon: "⌂" },
-    { id: "capturar", label: "Capturar", icon: "+" },
-    { id: "auditar", label: "Auditar", icon: "⌕", audit: true },
-    { id: "consulta", label: "Consulta Capturas", icon: "☰", admin: true },
-    { id: "cargar", label: "Cargar foto", icon: "↥", admin: true },
-    { id: "reporte", label: "Reporte", icon: "▤", admin: true },
+    { id: "inicio", label: "Menu" },
+    { id: "capturar", label: "Capturar" },
+    { id: "auditar", label: "Auditar", audit: true },
+    { id: "consulta", label: "Consulta Capturas", admin: true },
+    { id: "cargar", label: "Cargar foto", admin: true },
+    { id: "reporte", label: "Reporte", admin: true },
   ];
 
   function entrar(empleado) {
@@ -300,6 +322,9 @@ export default function Home() {
           onClick={() => setMenuOpen(false)}
         />
         <aside className={menuOpen ? `${styles.sidebar} ${styles.sidebarOpen}` : styles.sidebar}>
+          <div className={styles.brand}>
+            <img src="/tristone.png" alt="Tristone" />
+          </div>
           <p className={styles.navLabel}>Navegación</p>
           {menu.filter((item) => !item.admin || canAdmin).map((item) => (
             <button
@@ -322,7 +347,7 @@ export default function Home() {
               }
             >
               <span className={styles.navIcon} aria-hidden="true">
-                {item.icon}
+                <NavIcon name={item.id} />
               </span>
               {item.label}
             </button>
@@ -344,7 +369,11 @@ export default function Home() {
                   }
                   onClick={() => abrirVista("capturar")}
                 >
-                  <span className={styles.optionIcon}>+</span>
+                  <span className={styles.optionIcon}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="currentColor" d={NAV_ICONS.capturar} />
+                    </svg>
+                  </span>
                   CAPTURAR INVENTARIO
                 </button>
                 <button
@@ -360,7 +389,11 @@ export default function Home() {
                     canAudit ? "" : "No tiene permiso para auditar inventario"
                   }
                 >
-                  <span className={styles.optionIcon}>⌕</span>
+                  <span className={styles.optionIcon}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="currentColor" d={NAV_ICONS.auditar} />
+                    </svg>
+                  </span>
                   AUDITAR INVENTARIO
                 </button>
               </div>
