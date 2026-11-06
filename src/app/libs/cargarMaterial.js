@@ -1,4 +1,5 @@
 import { inventario } from "./inventario";
+import { asegurarInventarios, inventarioActivo } from "./inventarios";
 
 const INSERT_CHUNK = 400;
 
@@ -93,53 +94,59 @@ export function toMaterialRow(row) {
 }
 
 export async function ensureCargaTable() {
-  await inventario.query(`
-    CREATE TABLE IF NOT EXISTS carga (
-      origen VARCHAR(10) NOT NULL PRIMARY KEY,
-      registros INT NOT NULL,
-      fecha DATETIME NOT NULL
-    )
-  `);
+  await asegurarInventarios();
 }
 
-export async function loadedOrigins() {
+export async function loadedOrigins(inventarioId) {
   await ensureCargaTable();
+  const id = inventarioId || (await inventarioActivo())?.inventario_id;
+  if (!id) return [];
   const [rows] = await inventario.query(
-    "SELECT origen, registros FROM carga",
+    "SELECT origen, registros FROM carga WHERE inventario_id = ?",
+    [id],
   );
   return rows;
 }
 
 export async function appendMaterial(origen, rows) {
   await ensureCargaTable();
+  const ciclo = await inventarioActivo();
+  if (!ciclo) {
+    const error = new Error("No hay un inventario activo");
+    error.status = 409;
+    throw error;
+  }
+
   const connection = await inventario.getConnection();
   let transactionStarted = false;
 
   try {
     const [lockRows] = await connection.query(
       "SELECT GET_LOCK(?, 20) AS locked",
-      [`material_${origen}`],
+      [`material_${ciclo.inventario_id}_${origen}`],
     );
     if (Number(lockRows[0].locked) !== 1) {
       throw new Error("No se pudo reservar la carga");
     }
 
     const [existing] = await connection.query(
-      "SELECT origen FROM carga WHERE origen = ?",
-      [origen],
+      "SELECT origen FROM carga WHERE origen = ? AND inventario_id = ?",
+      [origen, ciclo.inventario_id],
     );
     if (existing.length > 0) {
-      return { alreadyLoaded: true, inserted: 0 };
+      return { alreadyLoaded: true, inserted: 0, inventario: ciclo };
     }
 
     await connection.beginTransaction();
     transactionStarted = true;
 
     for (let index = 0; index < rows.length; index += INSERT_CHUNK) {
-      const chunk = rows.slice(index, index + INSERT_CHUNK);
+      const chunk = rows
+        .slice(index, index + INSERT_CHUNK)
+        .map((row) => [...row, ciclo.inventario_id]);
       await connection.query(
         `INSERT INTO material
-          (storage_location, material, material_description, unidad_medida, stock, storage_unit, special_stock)
+          (storage_location, material, material_description, unidad_medida, stock, storage_unit, special_stock, inventario_id)
          VALUES ?`,
         [chunk],
       );
@@ -152,33 +159,47 @@ export async function appendMaterial(origen, rows) {
     }
 
     await connection.query(
-      "INSERT INTO carga (origen, registros, fecha) VALUES (?, ?, NOW())",
-      [origen, rows.length],
+      "INSERT INTO carga (inventario_id, origen, registros, fecha) VALUES (?, ?, ?, NOW())",
+      [ciclo.inventario_id, origen, rows.length],
     );
     await connection.commit();
     setProgress(origen, 100, "Listo");
-    return { alreadyLoaded: false, inserted: rows.length };
+    return { alreadyLoaded: false, inserted: rows.length, inventario: ciclo };
   } catch (error) {
     if (transactionStarted) await connection.rollback();
     throw error;
   } finally {
-    await connection.query("SELECT RELEASE_LOCK(?)", [`material_${origen}`]);
+    await connection.query("SELECT RELEASE_LOCK(?)", [
+      `material_${ciclo.inventario_id}_${origen}`,
+    ]);
     connection.release();
   }
 }
 
 export async function clearMaterial() {
-  setProgress("limpiar", 25, "Vaciando la tabla material");
   await ensureCargaTable();
+  const ciclo = await inventarioActivo();
+  if (!ciclo) {
+    const error = new Error("No hay un inventario activo");
+    error.status = 409;
+    throw error;
+  }
+
+  setProgress("limpiar", 25, "Vaciando la foto de este inventario");
   const connection = await inventario.getConnection();
 
   try {
-    await connection.query("TRUNCATE TABLE material");
+    await connection.query("DELETE FROM material WHERE inventario_id = ?", [
+      ciclo.inventario_id,
+    ]);
     setProgress("limpiar", 70, "Habilitando los botones");
-    await connection.query("DELETE FROM carga");
+    await connection.query("DELETE FROM carga WHERE inventario_id = ?", [
+      ciclo.inventario_id,
+    ]);
     resetProgress("MB52");
     resetProgress("ZLX03");
     setProgress("limpiar", 100, "Listo");
+    return ciclo;
   } finally {
     connection.release();
   }

@@ -42,6 +42,29 @@
   font-weight: 600;
 }
 
+.period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 20px 8px;
+  color: #243041;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.period select {
+  min-width: min(320px, 100%);
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #d5dbe3;
+  border-radius: 4px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+  font-weight: 600;
+}
+
 .hint {
   margin: 0;
   color: #6b7785;

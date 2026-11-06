@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { requireAdmin } from "../../../libs/adminSession";
 import { excelResponse } from "../../../libs/excel";
 import { inventario } from "../../../libs/inventario";
+import { inventarioDeConsulta } from "../../../libs/inventarios";
 
 const FALTANTES_COLUMNS = [
   { key: "storage_unit", label: "Serial" },
@@ -30,14 +31,30 @@ export async function GET(request) {
     Number.parseInt(searchParams.get("page") || "1", 10) || 1,
   );
   const like = `%${q}%`;
+  let ciclo;
+  try {
+    ciclo = await inventarioDeConsulta(searchParams);
+  } catch (error) {
+    return Response.json(
+      { error: error.message || "Inventario inválido" },
+      { status: error.status || 400 },
+    );
+  }
+  if (!ciclo) {
+    if (searchParams.get("format") === "xlsx") {
+      return Response.json({ error: "Seleccione un inventario" }, { status: 400 });
+    }
+    return Response.json({ total: 0, page: 1, pageSize, rows: [], inventario: null });
+  }
   const filters = [
-    "m.storage_unit IS NOT NULL",
-    "m.storage_unit <> 0",
+    "m.inventario_id = ?",
+    "m.storage_unit > 0",
     `NOT EXISTS (
-       SELECT 1 FROM captura c WHERE c.serial = m.storage_unit
+       SELECT 1 FROM captura c
+       WHERE c.serial = m.storage_unit AND c.inventario_id = ?
      )`,
   ];
-  const params = [];
+  const params = [ciclo.inventario_id, ciclo.inventario_id];
 
   if (q) {
     filters.push(

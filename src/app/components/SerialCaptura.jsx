@@ -55,6 +55,17 @@ export default function SerialCaptura({ user, planta, area, rack, bin, onBack, o
     try {
       const response = await fetch(`/api/capture/check-serial?serial=${clean}`);
       const data = await response.json();
+      if (data.sinInventario || data.sinFoto) {
+        playSound("error");
+        setError(
+          data.message ||
+            (data.sinFoto
+              ? "El inventario activo no tiene foto cargada"
+              : "No hay un inventario activo"),
+        );
+        setSerialInput("");
+        return;
+      }
       if (data.isCaptured) {
         playSound("error");
         setError(`El serial ${clean} ya ha sido capturado anteriormente`);

@@ -1,5 +1,6 @@
 import { empleados } from "./empleados";
 import { inventario } from "./inventario";
+import { inventarioActivo } from "./inventarios";
 
 export async function obtenerAuditor(empId) {
   const [rows] = await empleados.query(
@@ -17,21 +18,28 @@ export async function obtenerAuditor(empId) {
   return empleado;
 }
 
-export async function estadoRack(rack) {
+export async function estadoRack(rack, inventarioId) {
+  const id = inventarioId || (await inventarioActivo())?.inventario_id;
+  if (!id) return 0;
   const [rows] = await inventario.query(
-    "SELECT estado_auditoria FROM auditoria WHERE id_ubicacion = ? LIMIT 1",
-    [rack],
+    `SELECT estado_auditoria
+     FROM auditoria
+     WHERE id_ubicacion = ? AND inventario_id = ?
+     LIMIT 1`,
+    [rack, id],
   );
   return Number(rows[0]?.estado_auditoria) === 1 ? 1 : 0;
 }
 
-export async function actualizarEstadoRack(rack, empId) {
+export async function actualizarEstadoRack(rack, empId, inventarioId) {
+  const id = inventarioId || (await inventarioActivo())?.inventario_id;
+  if (!id) return 0;
   const [rows] = await inventario.query(
     `SELECT COUNT(*) total,
             SUM(CASE WHEN serial_auditado = 1 THEN 1 ELSE 0 END) auditados
      FROM captura
-     WHERE rack = ?`,
-    [rack],
+     WHERE rack = ? AND inventario_id = ?`,
+    [rack, id],
   );
   const total = Number(rows[0]?.total || 0);
   const auditados = Number(rows[0]?.auditados || 0);
@@ -52,13 +60,13 @@ export async function actualizarEstadoRack(rack, empId) {
 
   await inventario.query(
     `INSERT INTO auditoria
-       (id_ubicacion, ubicacion, area_ubicacion, emp_id, estado_auditoria)
-     VALUES (?, ?, ?, ?, ?)
+       (id_ubicacion, ubicacion, area_ubicacion, emp_id, estado_auditoria, inventario_id)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        area_ubicacion = VALUES(area_ubicacion),
        emp_id = VALUES(emp_id),
        estado_auditoria = VALUES(estado_auditoria)`,
-    [rack, rack, area, empId, completo],
+    [rack, rack, area, empId, completo, id],
   );
 
   return completo;

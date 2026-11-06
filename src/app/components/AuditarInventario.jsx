@@ -36,7 +36,7 @@ function Progress({ value, color = "#4caf50" }) {
   );
 }
 
-export default function AuditarInventario({ user }) {
+export default function AuditarInventario({ user, inventario }) {
   const [areas, setAreas] = useState([]);
   const [rack, setRack] = useState("");
   const [serials, setSerials] = useState([]);
@@ -168,6 +168,7 @@ export default function AuditarInventario({ user }) {
   if (rack) {
     return (
       <section className={styles.wrap}>
+        <p className={shell.activoBanner}>Auditando: {inventario.nombre}</p>
         <button
           type="button"
           className={styles.crumb}
@@ -232,6 +233,7 @@ export default function AuditarInventario({ user }) {
 
   return (
     <section className={styles.wrap}>
+      <p className={shell.activoBanner}>Auditando: {inventario.nombre}</p>
       <h1 className={shell.dashTitle}>Auditoría de Racks</h1>
       <div>
         <p className={styles.progressLabel}>

@@ -63,7 +63,7 @@ function Selector({ items, query, onQuery, page, setPage, render }) {
   );
 }
 
-export default function CapturarInventario({ user }) {
+export default function CapturarInventario({ user, inventario }) {
   const [step, setStep] = useState("planta");
   const [plantas, setPlantas] = useState([]);
   const [planta, setPlanta] = useState("");
@@ -151,6 +151,7 @@ export default function CapturarInventario({ user }) {
 
   return (
     <section className={styles.wrap}>
+      <p className={shell.activoBanner}>Capturando: {inventario.nombre}</p>
       {step === "planta" && (
         <>
           <div>

@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { requireAdmin } from "../../../libs/adminSession";
 import { inventario } from "../../../libs/inventario";
+import { inventarioActivo } from "../../../libs/inventarios";
 
 export async function GET(request) {
   await connection();
@@ -13,12 +14,14 @@ export async function GET(request) {
   }
 
   try {
+    const ciclo = await inventarioActivo();
+    if (!ciclo) return Response.json({ material: null });
     const [rows] = await inventario.query(
       `SELECT material, material_description
        FROM material
-       WHERE material = ?
+       WHERE material = ? AND inventario_id = ?
        LIMIT 1`,
-      [codigo],
+      [codigo, ciclo.inventario_id],
     );
     return Response.json({ material: rows[0] || null });
   } catch (error) {

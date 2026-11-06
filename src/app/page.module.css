@@ -61,37 +61,45 @@
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
+  align-items: center;
   width: 100%;
-  max-width: 440px;
-  gap: 16px;
-  font-size: 14px;
+  gap: 12px;
 }
 
 .ctas button {
-  display: flex;
+  display: inline-flex;
   justify-content: center;
   align-items: center;
-  height: 44px;
-  padding: 0 20px;
-  border-radius: 128px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 4px;
   border: 1px solid transparent;
-  transition: 0.2s;
+  box-shadow: 0 1px 2px rgba(23, 32, 51, 0.16);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
   width: fit-content;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
   font-family: inherit;
+  letter-spacing: 0.01em;
 }
 
 .primary {
-  background: var(--text-primary);
-  color: var(--background);
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #fff;
 }
 
 .secondary {
-  background: transparent;
-  color: var(--text-primary);
-  border-color: var(--button-secondary-border);
+  background: #fff;
+  color: #1976d2;
+  border-color: #1976d2;
+}
+
+.danger {
+  background: #fff;
+  color: #c62828;
+  border-color: #c62828;
 }
 
 .hiddenInput {
@@ -184,13 +192,19 @@
 /* Enable hover only on non-touch devices */
 @media (hover: hover) and (pointer: fine) {
   .primary:hover {
-    background: var(--button-primary-hover);
-    border-color: transparent;
+    background: #1565c0;
+    border-color: #1565c0;
+    box-shadow: 0 2px 6px rgba(25, 118, 210, 0.35);
   }
 
   .secondary:hover {
-    background: var(--button-secondary-hover);
-    border-color: transparent;
+    background: #e3f2fd;
+    border-color: #1565c0;
+  }
+
+  .danger:hover {
+    background: #fdecea;
+    border-color: #b71c1c;
   }
 }
 
@@ -535,6 +549,104 @@
     margin-top: 64px;
     margin-left: 240px;
   }
+}
+
+.activoBanner,
+.activoBannerOff {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.activoBanner {
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+.activoBannerOff {
+  background: #fff4e5;
+  color: #8a4b08;
+}
+
+.inventarioForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.inventarioForm input {
+  flex: 1;
+  min-width: min(280px, 100%);
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #d5dbe3;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 15px;
+}
+
+.inventarioList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inventarioList li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #e6eaf0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.inventarioList strong {
+  display: block;
+  color: #172033;
+  font-size: 16px;
+}
+
+.inventarioList li span {
+  color: #667585;
+  font-size: 13px;
+}
+
+.inventarioList button,
+.inventarioActivo {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.inventarioList button {
+  border: 1px solid #1976d2;
+  background: #1976d2;
+  color: #fff;
+  cursor: pointer;
+}
+
+.inventarioList button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.inventarioActivo {
+  display: inline-flex;
+  align-items: center;
+  background: #e3f2fd;
+  color: #0d47a1;
 }
 
 @media (min-width: 900px) {

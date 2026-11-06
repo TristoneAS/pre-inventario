@@ -3,6 +3,11 @@ import { requireAdmin } from "../../libs/adminSession";
 import { empleados } from "../../libs/empleados";
 import { excelResponse } from "../../libs/excel";
 import { inventario } from "../../libs/inventario";
+import {
+  inventarioActivo,
+  inventarioDeConsulta,
+  inventarioTieneFoto,
+} from "../../libs/inventarios";
 
 const CAPTURA_COLUMNS = [
   { key: "captura_id", label: "ID" },
@@ -39,6 +44,24 @@ export async function GET(request) {
   const like = `%${q}%`;
   const filters = [];
   const filterParams = [];
+
+  let ciclo;
+  try {
+    ciclo = await inventarioDeConsulta(searchParams);
+  } catch (error) {
+    return Response.json(
+      { error: error.message || "Inventario inválido" },
+      { status: error.status || 400 },
+    );
+  }
+  if (!ciclo) {
+    if (searchParams.get("format") === "xlsx") {
+      return Response.json({ error: "Seleccione un inventario" }, { status: 400 });
+    }
+    return Response.json({ total: 0, page: 1, pageSize, rows: [], inventario: null });
+  }
+  filters.push("inventario_id = ?");
+  filterParams.push(ciclo.inventario_id);
 
   if (q) {
     filters.push(
@@ -91,7 +114,13 @@ export async function GET(request) {
       filterParams,
     );
 
-    return Response.json({ total, page, pageSize, rows });
+    return Response.json({
+      total,
+      page,
+      pageSize,
+      rows,
+      inventario: ciclo,
+    });
   } catch (error) {
     console.error(error);
     return Response.json(
@@ -159,10 +188,27 @@ export async function POST(request) {
       );
     }
 
+    const cicloActivo = await inventarioActivo();
+    if (!cicloActivo) {
+      return Response.json(
+        { error: "No hay un inventario activo" },
+        { status: 409 },
+      );
+    }
+    if (!(await inventarioTieneFoto(cicloActivo.inventario_id))) {
+      return Response.json(
+        { error: `El inventario ${cicloActivo.nombre} no tiene foto cargada` },
+        { status: 409 },
+      );
+    }
+
     if (!descripcion) {
       const [materialRows] = await inventario.query(
-        "SELECT material_description FROM material WHERE material = ? AND material_description IS NOT NULL LIMIT 1",
-        [material],
+        `SELECT material_description
+         FROM material
+         WHERE material = ? AND inventario_id = ? AND material_description IS NOT NULL
+         LIMIT 1`,
+        [material, cicloActivo.inventario_id],
       );
       descripcion = text(materialRows[0]?.material_description, 250);
     }
@@ -174,8 +220,8 @@ export async function POST(request) {
         `INSERT INTO captura
           (captura_grupo, serial, material, material_description, cantidad,
            ubicacion, num_empleado, emp_nombre, fecha, serial_obsoleto,
-           serial_auditado, rack, planta)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 0, 0, ?, ?)`,
+           serial_auditado, rack, planta, inventario_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 0, 0, ?, ?, ?)`,
         [
           grupo,
           serial,
@@ -187,6 +233,7 @@ export async function POST(request) {
           text(empleado.emp_nombre, 250),
           rack,
           planta,
+          cicloActivo.inventario_id,
         ],
       );
 

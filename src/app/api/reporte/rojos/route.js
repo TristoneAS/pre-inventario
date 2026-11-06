@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { requireAdmin } from "../../../libs/adminSession";
 import { excelResponse } from "../../../libs/excel";
 import { inventario } from "../../../libs/inventario";
+import { inventarioDeConsulta } from "../../../libs/inventarios";
 
 const ROJOS_COLUMNS = [
   { key: "captura_id", label: "ID" },
@@ -33,8 +34,23 @@ export async function GET(request) {
     Number.parseInt(searchParams.get("page") || "1", 10) || 1,
   );
   const like = `%${q}%`;
-  const filters = ["serial_obsoleto = 1"];
-  const params = [];
+  let ciclo;
+  try {
+    ciclo = await inventarioDeConsulta(searchParams);
+  } catch (error) {
+    return Response.json(
+      { error: error.message || "Inventario inválido" },
+      { status: error.status || 400 },
+    );
+  }
+  if (!ciclo) {
+    if (searchParams.get("format") === "xlsx") {
+      return Response.json({ error: "Seleccione un inventario" }, { status: 400 });
+    }
+    return Response.json({ total: 0, page: 1, pageSize, rows: [], inventario: null });
+  }
+  const filters = ["serial_obsoleto = 1", "inventario_id = ?"];
+  const params = [ciclo.inventario_id];
 
   if (q) {
     filters.push(

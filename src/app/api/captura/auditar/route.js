@@ -1,5 +1,6 @@
 import { obtenerAuditor } from "../../../libs/auditoria";
 import { inventario } from "../../../libs/inventario";
+import { inventarioActivo, inventarioTieneFoto } from "../../../libs/inventarios";
 
 export async function POST(request) {
   try {
@@ -28,13 +29,27 @@ export async function POST(request) {
       );
     }
 
+    const activo = await inventarioActivo();
+    if (!activo) {
+      return Response.json(
+        { error: "No hay un inventario activo" },
+        { status: 409 },
+      );
+    }
+    if (!(await inventarioTieneFoto(activo.inventario_id))) {
+      return Response.json(
+        { error: `El inventario ${activo.nombre} no tiene foto cargada` },
+        { status: 409 },
+      );
+    }
+
     const [rows] = await inventario.query(
       `SELECT captura_id, serial, material, material_description, cantidad,
               ubicacion, rack, planta, num_empleado, emp_nombre, fecha, serial_auditado
        FROM captura
-       WHERE serial = ?
+       WHERE serial = ? AND inventario_id = ?
        LIMIT 1`,
-      [serial],
+      [serial, activo.inventario_id],
     );
     const captura = rows[0];
     if (!captura) {
@@ -55,20 +70,24 @@ export async function POST(request) {
     }
 
     await inventario.query(
-      "UPDATE captura SET serial_auditado = ? WHERE serial = ? AND serial_auditado = 0",
-      [auditor.emp_id, serial],
+      `UPDATE captura
+       SET serial_auditado = ?
+       WHERE serial = ? AND inventario_id = ? AND serial_auditado = 0`,
+      [auditor.emp_id, serial, activo.inventario_id],
     );
 
     if (captura.ubicacion) {
       await inventario.query(
-        `INSERT INTO auditoria (id_ubicacion, ubicacion, area_ubicacion, emp_id, estado_auditoria)
-         VALUES (?, ?, ?, ?, 1)
+        `INSERT INTO auditoria
+           (id_ubicacion, ubicacion, area_ubicacion, emp_id, estado_auditoria, inventario_id)
+         VALUES (?, ?, ?, ?, 1, ?)
          ON DUPLICATE KEY UPDATE emp_id = VALUES(emp_id), estado_auditoria = 1`,
         [
           String(captura.ubicacion).slice(0, 45),
           String(captura.ubicacion).slice(0, 45),
           captura.planta ? String(captura.planta).slice(0, 45) : null,
           auditor.emp_id,
+          activo.inventario_id,
         ],
       );
     }

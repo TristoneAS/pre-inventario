@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { insertarCaptura, serialCapturado } from "../../../libs/guardarCaptura";
+import { inventarioActivo, inventarioTieneFoto } from "../../../libs/inventarios";
 
 export async function GET(request) {
   await connection();
@@ -10,7 +11,19 @@ export async function GET(request) {
   }
 
   try {
-    const exists = await serialCapturado(serial);
+    const ciclo = await inventarioActivo();
+    if (!ciclo) {
+      return Response.json({ exists: false, sinInventario: true, serial: null });
+    }
+    if (!(await inventarioTieneFoto(ciclo.inventario_id))) {
+      return Response.json({
+        exists: false,
+        sinFoto: true,
+        serial: null,
+        message: `El inventario ${ciclo.nombre} no tiene foto cargada`,
+      });
+    }
+    const exists = await serialCapturado(serial, ciclo.inventario_id);
     return Response.json({ exists, serial: exists ? serial : null });
   } catch (error) {
     console.error(error);

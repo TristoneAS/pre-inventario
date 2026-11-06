@@ -6,6 +6,7 @@ import CapturaTable from "./CapturaTable";
 import Reporte from "./Reporte";
 import CapturarInventario from "./CapturarInventario";
 import Login from "./Login";
+import InventariosAdmin from "./InventariosAdmin";
 import MaterialTable from "./MaterialTable";
 import styles from "../page.module.css";
 
@@ -27,6 +28,8 @@ const NAV_ICONS = {
   cargar: "M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5z",
   reporte:
     "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z",
+  inventarios:
+    "M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z",
 };
 
 function NavIcon({ name }) {
@@ -60,6 +63,8 @@ export default function Home() {
     Number(user?.acc_inventario) === 2 ||
     Number(user?.acc_inventario) === 3;
   const canAdmin = Boolean(user?.isAdmin);
+  const [activo, setActivo] = useState(null);
+  const [activoListo, setActivoListo] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -106,7 +111,28 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!canAdmin && (view === "consulta" || view === "cargar" || view === "reporte")) {
+    if (!user) return undefined;
+    let vigente = true;
+    setActivoListo(false);
+    fetch("/api/inventarios/activo")
+      .then((response) => response.json())
+      .then((data) => {
+        if (vigente) setActivo(data.inventario || null);
+      })
+      .catch(() => {
+        if (vigente) setActivo(null);
+      })
+      .finally(() => {
+        if (vigente) setActivoListo(true);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [user, view]);
+
+  useEffect(() => {
+    const vistasAdmin = ["consulta", "cargar", "reporte", "inventarios"];
+    if (!canAdmin && vistasAdmin.includes(view)) {
       setView("inicio");
     }
   }, [canAdmin, view]);
@@ -115,6 +141,7 @@ export default function Home() {
     if (!canAdmin) return undefined;
     let active = true;
 
+    setCargasReady(false);
     fetch("/api/cargas")
       .then((response) => response.json())
       .then((data) => {
@@ -130,7 +157,7 @@ export default function Home() {
     return () => {
       active = false;
     };
-  }, [canAdmin]);
+  }, [canAdmin, activo?.inventario_id]);
 
   useEffect(() => {
     if (!modal?.origen) return undefined;
@@ -190,11 +217,12 @@ export default function Home() {
         current ? { ...current, percent: 100, label: "Listo" } : current,
       );
       const inserted = Number(data.inserted) || 0;
+      const destino = data.inventario?.nombre ? ` en ${data.inventario.nombre}` : "";
       const partial = data.truncated
         ? " La consulta llegó truncada, así que la tabla tiene solo esa parte."
         : "";
       setStatus(
-        `Se agregaron ${inserted.toLocaleString("es-MX")} registros de ${origen} a material.${partial}`,
+        `Se agregaron ${inserted.toLocaleString("es-MX")} registros de ${origen}${destino}.${partial}`,
       );
       setMaterialReload((current) => current + 1);
       await wait(500);
@@ -253,6 +281,7 @@ export default function Home() {
     { id: "inicio", label: "Menu" },
     { id: "capturar", label: "Capturar" },
     { id: "auditar", label: "Auditar", audit: true },
+    { id: "inventarios", label: "Inventarios", admin: true },
     { id: "consulta", label: "Consulta Capturas", admin: true },
     { id: "cargar", label: "Cargar foto", admin: true },
     { id: "reporte", label: "Reporte", admin: true },
@@ -266,7 +295,12 @@ export default function Home() {
   }
 
   function abrirVista(id) {
-    if ((id === "consulta" || id === "cargar" || id === "reporte") && !canAdmin) return;
+    if (
+      (id === "consulta" || id === "cargar" || id === "reporte" || id === "inventarios") &&
+      !canAdmin
+    ) {
+      return;
+    }
     setView(id);
     setMenuOpen(false);
   }
@@ -359,6 +393,21 @@ export default function Home() {
             <section>
               <h1 className={styles.dashTitle}>Sistema de Inventario Físico</h1>
               <p className={styles.dashHint}>Seleccione una opción para continuar</p>
+              {activoListo && activo && (
+                <p className={styles.activoBanner}>
+                  Inventario activo: {activo.nombre}
+                </p>
+              )}
+              {activoListo && !activo && (
+                <p className={styles.activoBannerOff}>
+                  No hay un inventario activo. El administrador debe activar uno antes de capturar.
+                </p>
+              )}
+              {activoListo && activo && !activo.tieneFoto && (
+                <p className={styles.activoBannerOff}>
+                  {activo.nombre} no tiene foto cargada. Se necesita la foto para poder capturar y auditar.
+                </p>
+              )}
               <div className={styles.options}>
                 <button
                   type="button"
@@ -400,8 +449,35 @@ export default function Home() {
             </section>
           )}
 
-          {view === "capturar" && <CapturarInventario user={user} />}
-          {view === "auditar" && canAudit && <AuditarInventario user={user} />}
+          {view === "capturar" &&
+            (activoListo && activo?.tieneFoto ? (
+              <CapturarInventario user={user} inventario={activo} />
+            ) : (
+              <p className={activoListo ? styles.activoBannerOff : styles.dashHint}>
+                {activoListo
+                  ? activo
+                    ? `${activo.nombre} no tiene foto cargada. Se necesita la foto antes de capturar.`
+                    : "No hay un inventario activo. Pida al administrador que active uno antes de capturar."
+                  : "Cargando inventario activo..."}
+              </p>
+            ))}
+          {view === "auditar" &&
+            canAudit &&
+            (activoListo && activo?.tieneFoto ? (
+              <AuditarInventario user={user} inventario={activo} />
+            ) : (
+              <p className={activoListo ? styles.activoBannerOff : styles.dashHint}>
+                {activoListo
+                  ? activo
+                    ? `${activo.nombre} no tiene foto cargada. Se necesita la foto antes de auditar.`
+                    : "No hay un inventario activo. Pida al administrador que active uno antes de auditar."
+                  : "Cargando inventario activo..."}
+              </p>
+            ))}
+
+          {view === "inventarios" && canAdmin && (
+            <InventariosAdmin onChange={setActivo} />
+          )}
 
           {view === "consulta" && canAdmin && <CapturaTable />}
 
@@ -411,8 +487,15 @@ export default function Home() {
             <section className={styles.consulta}>
               <h1 className={styles.dashTitle}>Cargar foto</h1>
               <p className={styles.dashHint}>
-                Consulta MB52 o ZLX03 y carga el resultado en material.
+                La foto se guarda en el inventario activo.
               </p>
+              {activoListo && (
+                <p className={activo ? styles.activoBanner : styles.activoBannerOff}>
+                  {activo
+                    ? `Foto del inventario: ${activo.nombre}`
+                    : "No hay un inventario activo. Actívelo antes de cargar la foto."}
+                </p>
+              )}
               <div className={styles.ctas}>
                 <button
                   type="button"
@@ -426,7 +509,7 @@ export default function Home() {
                       setMb52Status,
                     )
                   }
-                  disabled={busy || !cargasReady || mb52Loaded}
+                  disabled={busy || !cargasReady || mb52Loaded || !activo}
                 >
                   {mb52Loaded
                     ? "MB52 cargado"
@@ -446,7 +529,7 @@ export default function Home() {
                       setZlx03Status,
                     )
                   }
-                  disabled={busy || !cargasReady || zlx03Loaded}
+                  disabled={busy || !cargasReady || zlx03Loaded || !activo}
                 >
                   {zlx03Loaded
                     ? "ZLX03 cargado"
@@ -456,9 +539,9 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
-                  className={styles.secondary}
+                  className={styles.danger}
                   onClick={limpiarFoto}
-                  disabled={busy || !cargasReady}
+                  disabled={busy || !cargasReady || !activo}
                 >
                   {cleaning ? "Limpiando..." : "Limpiar foto"}
                 </button>
@@ -471,7 +554,10 @@ export default function Home() {
                 </div>
               )}
 
-              <MaterialTable key={materialReload} />
+              <MaterialTable
+                key={`${materialReload}-${activo?.inventario_id || "ninguno"}`}
+                inventario={activo}
+              />
             </section>
           )}
         </main>

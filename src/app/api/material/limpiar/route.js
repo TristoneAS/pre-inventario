@@ -13,8 +13,8 @@ export async function POST() {
   } catch (error) {
     console.error(error);
     return Response.json(
-      { error: "No se pudo limpiar la tabla material" },
-      { status: 500 },
+      { error: error.message || "No se pudo limpiar la foto" },
+      { status: error.status || 500 },
     );
   }
 }

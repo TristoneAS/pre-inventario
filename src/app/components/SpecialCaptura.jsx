@@ -34,6 +34,17 @@ export default function SpecialCaptura({ user, planta, area, rack, bin, onBack }
     try {
       const materialResponse = await fetch(`/api/capture/check-serial?serial=${clean}`);
       const materialData = await materialResponse.json();
+      if (materialData.sinInventario || materialData.sinFoto) {
+        playSound("error");
+        setError(
+          materialData.message ||
+            (materialData.sinFoto
+              ? "El inventario activo no tiene foto cargada"
+              : "No hay un inventario activo"),
+        );
+        setSerialInput("");
+        return false;
+      }
       if (!materialData.exists) {
         setObsoleto(true);
         setSerialAviso(serial);
@@ -43,6 +54,14 @@ export default function SpecialCaptura({ user, planta, area, rack, bin, onBack }
       }
       const captureResponse = await fetch(`/api/capture/special?serial=${clean}`);
       const captureData = await captureResponse.json();
+      if (captureData.sinFoto || captureData.sinInventario) {
+        playSound("error");
+        setError(
+          captureData.message || "El inventario activo no tiene foto cargada",
+        );
+        setSerialInput("");
+        return false;
+      }
       if (captureData.exists) {
         playSound("error");
         setError("Este serial ya ha sido capturado");

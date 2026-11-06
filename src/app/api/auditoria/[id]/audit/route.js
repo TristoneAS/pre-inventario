@@ -1,5 +1,6 @@
 import { obtenerAuditor, actualizarEstadoRack } from "../../../../libs/auditoria";
 import { inventario } from "../../../../libs/inventario";
+import { inventarioActivo, inventarioTieneFoto } from "../../../../libs/inventarios";
 
 export async function POST(request, { params }) {
   try {
@@ -24,13 +25,27 @@ export async function POST(request, { params }) {
       );
     }
 
+    const activo = await inventarioActivo();
+    if (!activo) {
+      return Response.json(
+        { error: "No hay un inventario activo" },
+        { status: 409 },
+      );
+    }
+    if (!(await inventarioTieneFoto(activo.inventario_id))) {
+      return Response.json(
+        { error: `El inventario ${activo.nombre} no tiene foto cargada` },
+        { status: 409 },
+      );
+    }
+
     const serial = scanned.substring(1);
     const [rows] = await inventario.query(
       `SELECT serial, serial_auditado
        FROM captura
-       WHERE rack = ? AND serial = ?
+       WHERE rack = ? AND serial = ? AND inventario_id = ?
        LIMIT 1`,
-      [rack, serial],
+      [rack, serial, activo.inventario_id],
     );
     const captura = rows[0];
 
@@ -48,11 +63,13 @@ export async function POST(request, { params }) {
     }
 
     await inventario.query(
-      "UPDATE captura SET serial_auditado = 1 WHERE rack = ? AND serial = ?",
-      [rack, serial],
+      `UPDATE captura
+       SET serial_auditado = 1
+       WHERE rack = ? AND serial = ? AND inventario_id = ?`,
+      [rack, serial, activo.inventario_id],
     );
 
-    const estado = await actualizarEstadoRack(rack, auditor.emp_id);
+    const estado = await actualizarEstadoRack(rack, auditor.emp_id, activo.inventario_id);
     return Response.json({ ok: true, estado_auditoria: estado });
   } catch (error) {
     console.error(error);

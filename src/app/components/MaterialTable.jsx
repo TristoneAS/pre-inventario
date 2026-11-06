@@ -19,7 +19,8 @@ function cellValue(value) {
   return String(value);
 }
 
-export default function MaterialTable() {
+export default function MaterialTable({ inventario }) {
+  const inventarioId = inventario?.inventario_id ? String(inventario.inventario_id) : "";
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -30,6 +31,12 @@ export default function MaterialTable() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!inventarioId) {
+      setRows([]);
+      setTotal(0);
+      setLoading(false);
+      return undefined;
+    }
     const controller = new AbortController();
 
     async function load() {
@@ -39,6 +46,7 @@ export default function MaterialTable() {
         q: query,
         page: String(page),
         pageSize: String(pageSize),
+        inventario: inventarioId,
       });
 
       try {
@@ -62,7 +70,7 @@ export default function MaterialTable() {
 
     load();
     return () => controller.abort();
-  }, [query, page, pageSize]);
+  }, [query, page, pageSize, inventarioId]);
 
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
@@ -84,7 +92,9 @@ export default function MaterialTable() {
           </span>
         </div>
         <p className={styles.hint}>
-          Visualización paginada de la tabla material, base preinventario.
+          {inventario
+            ? `Foto de ${inventario.nombre}.`
+            : "No hay un inventario activo."}
         </p>
       </div>
 

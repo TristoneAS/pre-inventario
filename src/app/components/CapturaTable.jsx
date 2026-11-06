@@ -53,8 +53,35 @@ export default function CapturaTable() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
+  const [inventarios, setInventarios] = useState([]);
+  const [inventarioId, setInventarioId] = useState("");
 
   useEffect(() => {
+    let active = true;
+    fetch("/api/inventarios")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        const lista = data.inventarios || [];
+        setInventarios(lista);
+        const activo = lista.find((item) => item.activo) || lista[0];
+        setInventarioId(activo ? String(activo.inventario_id) : "");
+      })
+      .catch(() => {
+        if (active) setError("No se pudieron consultar los inventarios");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!inventarioId) {
+      setRows([]);
+      setTotal(0);
+      setLoading(false);
+      return undefined;
+    }
     const controller = new AbortController();
 
     async function load() {
@@ -64,6 +91,7 @@ export default function CapturaTable() {
         q: query,
         page: String(page),
         pageSize: String(pageSize),
+        inventario: inventarioId,
       });
 
       try {
@@ -87,7 +115,7 @@ export default function CapturaTable() {
 
     load();
     return () => controller.abort();
-  }, [query, page, pageSize]);
+  }, [query, page, pageSize, inventarioId]);
 
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
@@ -103,7 +131,11 @@ export default function CapturaTable() {
     setDownloading(true);
     setError("");
     try {
-      const params = new URLSearchParams({ q: query, format: "xlsx" });
+      const params = new URLSearchParams({
+        q: query,
+        format: "xlsx",
+        inventario: inventarioId,
+      });
       const response = await fetch(`/api/captura?${params}`);
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -133,10 +165,30 @@ export default function CapturaTable() {
           </span>
         </div>
         <p className={styles.hint}>
-          Visualización paginada de la tabla captura. Utiliza el buscador para
-          localizar registros.
+          Elija el inventario para ver solo sus capturas.
         </p>
       </div>
+
+      <label className={styles.period}>
+        Inventario
+        <select
+          value={inventarioId}
+          onChange={(event) => {
+            setPage(1);
+            setInventarioId(event.target.value);
+          }}
+        >
+          {inventarios.length === 0 ? (
+            <option value="">Sin inventarios</option>
+          ) : null}
+          {inventarios.map((item) => (
+            <option key={item.inventario_id} value={item.inventario_id}>
+              {item.nombre}
+              {item.activo ? " (activo)" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <form className={styles.searchRow} onSubmit={buscar}>
         <input
@@ -150,7 +202,7 @@ export default function CapturaTable() {
           type="button"
           className={styles.excel}
           onClick={descargar}
-          disabled={downloading}
+          disabled={downloading || !inventarioId}
         >
           {downloading ? "Descargando..." : "Descargar Excel"}
         </button>

@@ -28,7 +28,17 @@ function cellValue(column, row) {
   return String(value);
 }
 
-function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empty, filename }) {
+function ReportTable({
+  title,
+  hint,
+  endpoint,
+  columns,
+  rowKey,
+  placeholder,
+  empty,
+  filename,
+  inventarioId,
+}) {
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -42,6 +52,13 @@ function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empt
   useEffect(() => {
     const controller = new AbortController();
 
+    if (!inventarioId) {
+      setRows([]);
+      setTotal(0);
+      setLoading(false);
+      return undefined;
+    }
+
     async function load() {
       setLoading(true);
       setError("");
@@ -49,6 +66,7 @@ function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empt
         q: query,
         page: String(page),
         pageSize: String(pageSize),
+        inventario: String(inventarioId),
       });
 
       try {
@@ -72,7 +90,7 @@ function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empt
 
     load();
     return () => controller.abort();
-  }, [endpoint, query, page, pageSize]);
+  }, [endpoint, query, page, pageSize, inventarioId]);
 
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
@@ -88,7 +106,11 @@ function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empt
     setDownloading(true);
     setError("");
     try {
-      const params = new URLSearchParams({ q: query, format: "xlsx" });
+      const params = new URLSearchParams({
+        q: query,
+        format: "xlsx",
+        inventario: String(inventarioId || ""),
+      });
       const response = await fetch(`${endpoint}?${params}`);
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -132,7 +154,7 @@ function ReportTable({ title, hint, endpoint, columns, rowKey, placeholder, empt
           type="button"
           className={styles.excel}
           onClick={descargar}
-          disabled={downloading}
+          disabled={downloading || !inventarioId}
         >
           {downloading ? "Descargando..." : "Descargar Excel"}
         </button>
@@ -233,27 +255,68 @@ const FALTANTES = [
 ];
 
 export default function Reporte() {
+  const [inventarios, setInventarios] = useState([]);
+  const [inventarioId, setInventarioId] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/inventarios")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        const lista = data.inventarios || [];
+        setInventarios(lista);
+        const activo = lista.find((item) => item.activo) || lista[0];
+        setInventarioId(activo ? String(activo.inventario_id) : "");
+      })
+      .catch(() => {
+        if (active) setInventarios([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div className={styles.stack}>
+      <label className={styles.period}>
+        Inventario
+        <select
+          value={inventarioId}
+          onChange={(event) => setInventarioId(event.target.value)}
+        >
+          {inventarios.length === 0 ? (
+            <option value="">Sin inventarios</option>
+          ) : null}
+          {inventarios.map((item) => (
+            <option key={item.inventario_id} value={item.inventario_id}>
+              {item.nombre}
+              {item.activo ? " (activo)" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
       <ReportTable
         title="Rojos"
-        hint="Capturas guardadas con serial obsoleto."
+        hint="Capturas guardadas con serial obsoleto en el inventario seleccionado."
         endpoint="/api/reporte/rojos"
         filename="rojos.xlsx"
         columns={ROJOS}
         rowKey="captura_id"
         placeholder="Buscar por serial, material, rack, empleado, ubicación..."
         empty="No hay seriales obsoletos."
+        inventarioId={inventarioId}
       />
       <ReportTable
         title="Faltan de capturar"
-        hint="Seriales que están en material y todavía no aparecen en captura."
+        hint="Seriales de la foto de este inventario que todavía no aparecen en sus capturas."
         endpoint="/api/reporte/faltantes"
         filename="faltan-de-capturar.xlsx"
         columns={FALTANTES}
         rowKey="material_id"
         placeholder="Buscar por serial, material, descripción o ubicación..."
         empty="No falta ningún serial de material por capturar."
+        inventarioId={inventarioId}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { requireAdmin } from "../../libs/adminSession";
 import { inventario } from "../../libs/inventario";
+import { inventarioDeConsulta } from "../../libs/inventarios";
 
 const PAGE_SIZES = new Set([10, 30, 50, 100]);
 
@@ -20,19 +21,33 @@ export async function GET(request) {
   );
 
   const like = `%${q}%`;
-  const filters = q
-    ? [
-        "CAST(material_id AS CHAR) LIKE ?",
-        "material LIKE ?",
-        "material_description LIKE ?",
-        "storage_location LIKE ?",
-        "unidad_medida LIKE ?",
-        "CAST(stock AS CHAR) LIKE ?",
-        "special_stock LIKE ?",
-      ]
-    : [];
-  const where = filters.length ? `WHERE ${filters.join(" OR ")}` : "";
-  const filterParams = q ? filters.map(() => like) : [];
+  let ciclo;
+  try {
+    ciclo = await inventarioDeConsulta(searchParams);
+  } catch (error) {
+    return Response.json(
+      { error: error.message || "Inventario inválido" },
+      { status: error.status || 400 },
+    );
+  }
+  if (!ciclo) {
+    return Response.json({ total: 0, page: 1, pageSize, rows: [], inventario: null });
+  }
+  const filters = ["inventario_id = ?"];
+  const filterParams = [ciclo.inventario_id];
+  if (q) {
+    filters.push(
+      `(CAST(material_id AS CHAR) LIKE ?
+        OR material LIKE ?
+        OR material_description LIKE ?
+        OR storage_location LIKE ?
+        OR unidad_medida LIKE ?
+        OR CAST(stock AS CHAR) LIKE ?
+        OR special_stock LIKE ?)`,
+    );
+    filterParams.push(like, like, like, like, like, like, like);
+  }
+  const where = `WHERE ${filters.join(" AND ")}`;
 
   try {
     const [countRows] = await inventario.query(
@@ -53,7 +68,7 @@ export async function GET(request) {
       filterParams,
     );
 
-    return Response.json({ total, page, pageSize, rows });
+    return Response.json({ total, page, pageSize, rows, inventario: ciclo });
   } catch (error) {
     console.error(error);
     return Response.json(
